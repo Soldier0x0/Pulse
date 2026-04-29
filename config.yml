@@ -1,0 +1,96 @@
+# =========================
+# Runtime and Scheduling
+# =========================
+runtime:
+  timezone: "Asia/Kolkata"  # Example: "UTC"
+  poll_interval_minutes: 5   # Example: 10
+  weekly_digest_cron: "0 9 * * MON"  # Example: "0 8 * * MON"
+  quiet_hours_start: 0  # Example: 23
+  quiet_hours_end: 0    # Example: 6
+
+# =========================
+# Filtering and Alerting
+# =========================
+filters:
+  min_cvss_score: 7.0  # Example: 8.0
+  alert_cooldown_hours: 6  # Example: 12
+  max_alerts_per_cycle: 5  # Example: 10
+  recency_days: 90  # Example: 30
+  watch_products: ["apache", "windows", "kubernetes"]  # Example: ["nginx"]
+  watch_cve_ids: ["CVE-2025-0001"]  # Example: ["CVE-2024-12345"]
+  watch_threat_actors: ["Lazarus Group", "APT29"]  # Example: ["FIN7"]
+  watch_keywords: ["zero day", "actively exploited", "PoC"]  # Example: ["wormable"]
+
+# =========================
+# Data Source Settings
+# =========================
+sources:
+  nvd:
+    enabled: true
+    url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    timeout_seconds: 20
+  otx:
+    enabled: true
+    url: "https://otx.alienvault.com/api/v1/pulses/subscribed"
+    timeout_seconds: 20
+  malwarebazaar:
+    enabled: true
+    url: "https://mb-api.abuse.ch/api/v1/"
+    timeout_seconds: 20
+  hibp:
+    enabled: true
+    url: "https://haveibeenpwned.com/api/v3/latestbreach"
+    timeout_seconds: 20
+  cisa_kev:
+    enabled: true
+    url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    timeout_seconds: 20
+  exploitdb:
+    enabled: true
+    rss_url: "https://www.exploit-db.com/rss.xml"
+    timeout_seconds: 20
+  rss:
+    enabled: true
+    timeout_seconds: 20
+    feeds:
+      - "https://www.bleepingcomputer.com/feed/"
+      - "https://thehackernews.com/feeds/posts/default"
+      - "https://securelist.com/feed/"
+      - "https://blog.rapid7.com/rss/"
+
+# =========================
+# Scoring Weights
+# =========================
+scoring:
+  malwarebazaar_bonus: 2.0
+  otx_bonus: 1.5
+  cisa_kev_bonus: 1.0
+  exploitdb_bonus: 0.5
+  news_bonus: 0.5
+  max_score: 10.0
+
+# =========================
+# MITRE ATT&CK Mapping
+# =========================
+mitre_mapping:
+  "remote code execution": "T1059"
+  "privilege escalation": "T1068"
+  "sql injection": "T1190"
+  "phishing": "T1566"
+  "lateral movement": "T1021"
+  "command and control": "T1071"
+  "data exfiltration": "T1041"
+  "credential dumping": "T1003"
+  "persistence": "T1053"
+  "defense evasion": "T1562"
+
+# =========================
+# Classical ML Configuration
+# =========================
+classification:
+  enabled: true
+  min_confidence: 0.45  # Example: 0.60
+  labels: ["rce", "sqli", "privesc", "dos", "infoleak", "authbypass"]  # Example: ["xss", "csrf"]
+  entity_dictionary:
+    vendors: ["microsoft", "apache", "oracle", "vmware"]  # Example: ["cisco"]
+    products: ["windows", "http server", "weblogic", "esxi"]  # Example: ["ios xe"]

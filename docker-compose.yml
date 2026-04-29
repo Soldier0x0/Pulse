@@ -1,0 +1,82 @@
+services:
+  cti-platform:
+    build:
+      context: .
+    container_name: cti-platform
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('ok')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - cti-net
+
+  mongodb:
+    image: mongo:7
+    container_name: cti-mongodb
+    restart: unless-stopped
+    command: ["--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    networks:
+      - cti-net
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: cti-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - cti-net
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: cti-mongo-express
+    restart: unless-stopped
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - cti-net
+
+volumes:
+  mongo_data:
+  grafana_data:
+
+networks:
+  cti-net:
+    driver: bridge

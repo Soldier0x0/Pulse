@@ -1,0 +1,42 @@
+{
+  "id": null,
+  "uid": "cti-overview",
+  "title": "CTI Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Alerts Over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": []
+    },
+    {
+      "type": "piechart",
+      "title": "CVEs by Severity",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": []
+    },
+    {
+      "type": "barchart",
+      "title": "Top Targeted Products",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": []
+    },
+    {
+      "type": "heatmap",
+      "title": "ATT&CK Technique Heatmap",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": []
+    }
+  ],
+  "templating": {
+    "list": [
+      { "name": "severity", "type": "textbox", "query": "critical|high|medium|low" },
+      { "name": "source", "type": "textbox", "query": "nvd|otx|malwarebazaar|rss" },
+      { "name": "product", "type": "textbox", "query": "" },
+      { "name": "daterange", "type": "textbox", "query": "7d" }
+    ]
+  }
+}
