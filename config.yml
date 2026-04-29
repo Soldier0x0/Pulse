@@ -5,6 +5,7 @@ runtime:
   timezone: "Asia/Kolkata"  # Example: "UTC"
   poll_interval_minutes: 5   # Example: 10
   weekly_digest_cron: "0 9 * * MON"  # Example: "0 8 * * MON"
+  live_only_mode: true  # Example: false
   quiet_hours_start: 0  # Example: 23
   quiet_hours_end: 0    # Example: 6
 

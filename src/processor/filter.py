@@ -20,12 +20,15 @@ def filter_events(events: list[ThreatEvent], config: dict) -> list[ThreatEvent]:
 
     kept: list[ThreatEvent] = []
     for event in events:
+        published_at = event.published_at
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
         text = f"{event.title} {event.description}".lower()
         is_score_match = event.cvss >= min_cvss
         is_keyword_match = any(keyword in text for keyword in keywords)
         is_cve_match = any(cve.upper() in watch_cves for cve in event.cve_ids)
         is_product_match = event.product.lower() in watch_products
-        is_recent = event.published_at >= cutoff
+        is_recent = published_at >= cutoff
 
         if is_cve_match or is_product_match:
             kept.append(event)

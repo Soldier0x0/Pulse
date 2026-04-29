@@ -20,7 +20,7 @@ from src.collector.otx import fetch_otx_events
 from src.collector.rss import fetch_rss_events
 from src.delivery.discord import send_discord_alert
 from src.delivery.telegram import send_telegram_alert
-from src.formatter.humanizer import render_telegram_markdown
+from src.formatter.humanizer import render_telegram_html
 from src.processor.deduplicator import save_alert, should_send_alert
 from src.processor.filter import filter_events
 from src.processor.mitre_tagger import tag_mitre
@@ -60,6 +60,7 @@ async def run_once() -> None:
         raw_events.extend(batch)
 
     filtered = filter_events(raw_events, cfg)
+    filtered = await _apply_live_only_window(db, filtered, cfg)
     sent_count = 0
     dedup_dropped = 0
     max_alerts = int(cfg["filters"].get("max_alerts_per_cycle", 5))
@@ -97,7 +98,7 @@ async def run_once() -> None:
         doc["sources"] = sorted(doc["sources"])
         if await should_send_alert(db, doc):
             if not _in_quiet_hours(cfg):
-                text = render_telegram_markdown(alert)
+                text = render_telegram_html(alert)
                 pin = severity == "critical"
                 if env.telegram_bot_token != "replace_me" and env.telegram_chat_id != "replace_me":
                     await send_telegram_alert(env.telegram_bot_token, env.telegram_chat_id, text, pin=pin)
@@ -196,3 +197,37 @@ def _enrichment_quality(event: Any, mitre_tags: list[str]) -> tuple[float, str]:
     confidence = min(confidence, 0.99)
     level = "high" if confidence >= 0.75 else "medium" if confidence >= 0.5 else "low"
     return confidence, level
+
+
+async def _apply_live_only_window(db: Any, events: list[Any], config: dict[str, Any]) -> list[Any]:
+    """Keep only events published after last successful run timestamp."""
+
+    if not bool(config["runtime"].get("live_only_mode", True)):
+        return events
+    now = datetime.now(timezone.utc)
+    state = await db.pipeline_state.find_one({"_id": "live_window"})
+    if not state:
+        # First startup in live mode should not backfill historical data.
+        await db.pipeline_state.update_one(
+            {"_id": "live_window"},
+            {"$set": {"last_run_at": now}},
+            upsert=True,
+        )
+        LOGGER.info("Live-only mode initialized; skipping backlog on first run.")
+        return []
+    last_run_at = state.get("last_run_at", now)
+    if last_run_at.tzinfo is None:
+        last_run_at = last_run_at.replace(tzinfo=timezone.utc)
+    recent = []
+    for event in events:
+        published_at = event.published_at
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+        if published_at >= last_run_at:
+            recent.append(event)
+    await db.pipeline_state.update_one(
+        {"_id": "live_window"},
+        {"$set": {"last_run_at": now}},
+        upsert=True,
+    )
+    return recent

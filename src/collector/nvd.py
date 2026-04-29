@@ -81,15 +81,36 @@ def _extract_cpe_identity(cve_data: dict[str, Any]) -> tuple[str, str, str]:
     configs = cve_data.get("configurations", [])
     for conf in configs:
         for node in conf.get("nodes", []):
-            for match in node.get("cpeMatch", []):
-                cpe = match.get("criteria", "")
-                parts = cpe.split(":")
-                if len(parts) >= 6:
-                    vendor = parts[3] or "unknown"
-                    product = parts[4] or "unknown"
-                    version = parts[5] if parts[5] not in ("*", "-") else "unknown"
-                    return vendor, product, version
+            identity = _extract_from_node(node)
+            if identity:
+                return identity
     return "unknown", "unknown", "unknown"
+
+
+def _extract_from_node(node: dict[str, Any]) -> tuple[str, str, str] | None:
+    """Recursively extract vendor/product/version from CPE match nodes."""
+
+    for match in node.get("cpeMatch", []):
+        cpe = match.get("criteria", "")
+        parts = cpe.split(":")
+        if len(parts) >= 6:
+            vendor = parts[3] or "unknown"
+            product = parts[4] or "unknown"
+            version = parts[5] if parts[5] not in ("*", "-") else "unknown"
+            if version == "unknown":
+                version = (
+                    match.get("versionStartIncluding")
+                    or match.get("versionStartExcluding")
+                    or match.get("versionEndIncluding")
+                    or match.get("versionEndExcluding")
+                    or "unknown"
+                )
+            return vendor, product, version
+    for child in node.get("children", []):
+        identity = _extract_from_node(child)
+        if identity:
+            return identity
+    return None
 
 
 def _extract_published_at(cve_data: dict[str, Any]) -> datetime:
@@ -98,7 +119,10 @@ def _extract_published_at(cve_data: dict[str, Any]) -> datetime:
     published = cve_data.get("published", "")
     if published:
         try:
-            return datetime.fromisoformat(published.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(published.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=timezone.utc)
+            return parsed
         except ValueError:
             pass
     return datetime.now(timezone.utc)

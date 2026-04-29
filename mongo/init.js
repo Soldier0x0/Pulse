@@ -7,3 +7,6 @@ db.alerts.createIndex({ created_at: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30
 
 db.createCollection("correlation_state");
 db.correlation_state.createIndex({ product: 1, last_alerted_at: -1 });
+
+db.createCollection("pipeline_state");
+db.pipeline_state.createIndex({ _id: 1 });
